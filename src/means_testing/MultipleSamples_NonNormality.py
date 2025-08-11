@@ -16,7 +16,7 @@ data4 = [1.96, 1.98, 1.98, 2.01, 2.04, 2.06, 2.08, 2.10, 2.11, 3.02]
 data5 = [1.96, 1.98, 1.98, 2.00, 2.03, 2.03, 2.06, 2.07, 2.11, 3.03]
 
 StatToolbox = MeansTester(
-    data1, data2, data3, data4, data5, _sig_level=0.05
+    data1, data2, data3, data4, data5
 )
 
-print(Samples_ParametricStatToolbox.samples)
+StatToolbox.test_means()
