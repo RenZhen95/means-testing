@@ -1,0 +1,19 @@
+[project]
+name = "means-testing"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "RenZhen95", email = "j-liaw@hotmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "scipy>=1.16.1",
+]
+
+[project.scripts]
+means-testing = "means_testing:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
