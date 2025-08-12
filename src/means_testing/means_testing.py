@@ -7,7 +7,6 @@ import pandas as pd
 from scipy.stats import norm, chi2
 from scipy.stats import shapiro, f, levene
 
-# Simple animation
 def animate_loading(stop_event, msg):
     loading_chars = [
         f'{msg}    ',
@@ -21,6 +20,7 @@ def animate_loading(stop_event, msg):
         sys.stdout.flush()
         time.sleep(0.5)
         i += 1
+
     # After the loop, clear the line and print "Done!"
     sys.stdout.write(f'\r{msg} DONE!\n')
 
@@ -53,7 +53,7 @@ class MeansTester:
     ----
     In carrying out the F-Test, the F-statistic is defined here, always,
     as the bigger variance over the smaller one. Hence, a one-tailed test
-    is always assumed.    
+    is always assumed.
 
     Parameters
     ----------
@@ -123,41 +123,41 @@ class MeansTester:
         Returns
         -------
         rejectH0 : bool
-         - If True, samples have statistically different variances        
+         - If True, samples have statistically different variances
         '''
         if len(self.Samples) == 1:
             raise ValueError("At least two sample should be passed!")
 
         if len(self.Samples) == 2:
-            stat, p, reject_H0= self.f_test()
+            stat, p, rejectH0= self.f_test()
             res = {'test_type': 'F-Test', 'stat': stat, 'p': p}
 
         elif len(self.Samples) >= 3:
             stat, p = levene(*self.Samples)
             if p <= self.sig_level_variance:
-                reject_H0 = True
+                rejectH0 = True
             else:
-                reject_H0 = False
+                rejectH0 = False
             res = {'test_type': 'Levene', 'stat': stat, 'p': p}
-    
-        return reject_H0, res
-    
+
+        return rejectH0, res
+
     def f_test(self):
         '''
         Test if variances from two samples are equal.
-    
+
         Returns
         -------
         F : float
          - The computed F-statistic
-    
+
         rejectH0 : bool
          - If True, samples have different variances
         '''
         # 1. Calculate variances
         sd1 = self.Samples[0].std(ddof=1) # should be the bigger one
         sd2 = self.Samples[1].std(ddof=1)
-    
+
         if sd1 < sd2:
             sd1, sd2 = sd2, sd1
             n1 = len(self.Samples[1])
@@ -165,16 +165,16 @@ class MeansTester:
         else:
             n1 = len(self.Samples[0])
             n2 = len(self.Samples[1])
-    
+
         # 2. Calculate F
         F = (sd1**2) / (sd2**2)
-    
+
         # 3. Get critical F
         dfn = n1 - 1
         dfd = n2 - 1
-    
+
         Fcrit = f.isf(self.sig_level_variance, dfn, dfd, loc=0, scale=1)
-    
+
         # 4. Reject null hypothesis if F > Fcrit
         if F >= Fcrit:
             rejectH0 = True
@@ -183,7 +183,7 @@ class MeansTester:
 
         # 5. Also get the probability (area under the curve)
         p = f.sf(F, dfn, dfd, loc=0, scale=1)
-    
+
         return F, p, rejectH0
 
     def rank_order_center_test(self):
@@ -196,7 +196,7 @@ class MeansTester:
          - If true, samples have statistically different medians (centers)
         '''
         self.create_rank_table()
-    
+
         if len(self.Samples) == 2:
             stat, p, rejectH0 = self.mann_whitney()
             res = {'test_type': 'Mann-Whitney', 'stat': stat, 'p': p}
@@ -204,15 +204,15 @@ class MeansTester:
         elif len(self.Samples) >= 3:
             stat, p, rejectH0 = self.kruskal_wallis()
             res = {'test_type': 'Kruskal-Wallis', 'stat': stat, 'p': p}
-    
+
         return rejectH0, res
-    
+
     def mann_whitney(self):
         '''
         Test the null hypothesis that the centers (median) of two samples are
         statistically different. The computed Mann-Whitney U statistic follows
         a normal distribution.
-    
+
         The Mann-Whitney test only applies to two samples.
 
         Returns
@@ -230,23 +230,23 @@ class MeansTester:
         else:
             n1Group = self.df_wRanks[self.df_wRanks["Group"]==1]
             n2Group = self.df_wRanks[self.df_wRanks["Group"]==0]
-    
+
         # 1. Get n1 and n2
         n1 = n1Group.shape[0]
         n2 = n2Group.shape[0]
-    
+
         # 2. Get T
         T = n1Group["Rank"].sum()
-    
+
         # 3. Get mu
         mu = n1*(n1 + n2 + 1)/2
-        
+
         # 4. Get standard deviation
         sd = (n1*n2*(n1 + n2 + 1)/12)**0.5
-        
+
         # 5. Get z
         z = (T-mu)/sd
-    
+
         # 6. Get critical z and computed p value
         # - Two-tailed test
         if self.two_tailed:
@@ -285,10 +285,10 @@ class MeansTester:
                 p = 1 - norm.sf(z, loc=0, scale=1)
 
         return z, p, rejectH0
-    
+
     def kruskal_wallis(self):
         '''
-        Test the null hypothesis that the centers (median) of three or more 
+        Test the null hypothesis that the centers (median) of three or more
         samples are statistically different. The computed Kruskal-Wallis H
         statistic follows the chi-square distribution
 
@@ -299,21 +299,21 @@ class MeansTester:
         '''
         # 1. Get number of groups
         groups = list(set(list(self.df_wRanks["Group"])))
-    
-        # 2. Compute H-statistic    
+
+        # 2. Compute H-statistic
         SumofRanks = 0
         for g in groups:
             SumofRanks += (
                 (self.df_wRanks[self.df_wRanks["Group"]==g]["Rank"].sum())**2
             ) / self.df_wRanks[self.df_wRanks["Group"]==g].shape[0]
-    
+
         n = self.df_wRanks.shape[0]
-        
+
         H = 12 / (n*(n+1)) * SumofRanks - 3*(n+1)
-    
+
         # Calculate Hcrit
         Hcrit = chi2.isf(self.sig_level_means, len(groups)-1, loc=0, scale=1)
-    
+
         if H >= Hcrit:
             rejectH0 = True
         else:
@@ -321,12 +321,12 @@ class MeansTester:
 
         # 3. Also get the probability (area under the curve)
         p = chi2.sf(H, len(groups)-1, loc=0, scale=1)
-    
+
         return H, p, rejectH0
 
     def create_rank_table(self):
         '''
-        Create a table comprised of the samples all joined together and 
+        Create a table comprised of the samples all joined together and
         ranked. Necessary for rank-order methods.
         '''
         # Initialize table
@@ -335,15 +335,15 @@ class MeansTester:
             for v in sample:
                 data_["Value"].append(v)
                 data_["Group"].append(i)
-    
+
         self.df_wRanks = pd.DataFrame(data=data_)
-    
+
         # Sort values in ascending order
         self.df_wRanks = self.df_wRanks.sort_values("Value")
-    
+
         # Assign rank
         self.df_wRanks["Rank"] = np.arange(1, self.df_wRanks.shape[0]+1, 1, dtype=float)
-    
+
         # Handle ties
         row_wties = self.df_wRanks.duplicated(subset=["Value"])
         idx_wties = row_wties.loc[row_wties == True].index.to_list()
@@ -352,6 +352,23 @@ class MeansTester:
             self.df_wRanks.loc[self.df_wRanks["Value"] == v, "Rank"] = np.mean(
                 self.df_wRanks[self.df_wRanks["Value"] == v]["Rank"].to_list()
             )
+
+    def continuous_mean_test(self):
+        '''
+        Means test for continuous data. Assumes samples are drawn from
+        normal distribution.
+
+        Returns
+        -------
+        rejectH0 : bool
+         - If true, samples have statistically different means
+        '''
+        if len(self.Samples) == 2:
+            # Carry out t-test
+        elif len(self.Samples) >= 3:
+            # Carry out one-way ANOVA
+
+        return rejectH0, res
 
     def test_means(self):
         '''
