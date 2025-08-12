@@ -1,5 +1,5 @@
 # Means-Testing
-A simple library to compare the means of two or more samples and check for statistical differences.
+A simple library to compare the means of two or more *independent* samples and check for statistical differences.
 
 ## Installation
 ```

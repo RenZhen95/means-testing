@@ -6,6 +6,7 @@ import pandas as pd
 
 from scipy.stats import norm, chi2
 from scipy.stats import shapiro, f, levene
+from scipy.stats import ttest_ind, f_oneway
 
 def animate_loading(stop_event, msg):
     loading_chars = [
@@ -51,9 +52,20 @@ class MeansTester:
 
     Note
     ----
-    In carrying out the F-Test, the F-statistic is defined here, always,
-    as the bigger variance over the smaller one. Hence, a one-tailed test
-    is always assumed.
+    1. In carrying out the F-Test, the F-statistic is defined here, always,
+       as the bigger variance over the smaller one. Hence, a one-tailed test
+       is always assumed.
+
+    2. When carrying out a one-tailed test, note the following:
+    2.a) If a Mann-Whitney test is carried out, the order of samples passed
+         does NOT MATTER. This is due to the local implementation of the
+         Mann-Whitney test, where `n1` will always refer to the smaller
+         sample.
+    2.b) If a Student's t-test is carried out, the order of samples passed
+         MATTERS. Scipy's implementation is used here (scipy.stats.ttest_ind),
+         where the mean of the distribution underlying the first sample, is
+         compared with the mean of the distribution underlying the second
+         sample.
 
     Parameters
     ----------
@@ -265,6 +277,7 @@ class MeansTester:
         else:
             zcrit = norm.isf(self.sig_level_means, loc=0, scale=1)
 
+            # Note: The direction does not affect the computed z-value
             # Positive end
             if self.one_tailed_side == 'positive':
                 if z >= zcrit:
@@ -283,6 +296,12 @@ class MeansTester:
                     rejectH0 = False
 
                 p = 1 - norm.sf(z, loc=0, scale=1)
+
+            else:
+                raise ValueError(
+                    "Parameter one_tailed_side must either be 'negative' " +
+                    "or 'positive'!"
+                )
 
         return z, p, rejectH0
 
@@ -363,10 +382,39 @@ class MeansTester:
         rejectH0 : bool
          - If true, samples have statistically different means
         '''
+        if self.two_tailed:
+            H1 = 'two-sided'
+        else:
+            if self.one_tailed_side == 'positive':
+                H1 = 'greater'
+            elif self.one_tailed_side == 'negative':
+                H1 = 'less'
+
+        is_unequal_variance = self.VarianceTest_H1_Stats[0]
         if len(self.Samples) == 2:
-            # Carry out t-test
+            res_ttest = ttest_ind(
+                *self.Samples, equal_var=(not is_unequal_variance),
+                alternative=H1
+            )
+            res = {
+                'test_type': 't-test',
+                'stat': res_ttest.statistic,
+                'p': res_ttest.pvalue
+            }
         elif len(self.Samples) >= 3:
-            # Carry out one-way ANOVA
+            res_onewayANOVA = f_oneway(
+                *self.Samples, equal_var=(not is_unequal_variance),
+            )
+            res = {
+                'test_type': 'one-way ANOVA',
+                'stat': res_onewayANOVA.statistic,
+                'p': res_onewayANOVA.pvalue
+            }
+
+        if res['p'] <= self.sig_level_means:
+            rejectH0 = True
+        else:
+            rejectH0 = False
 
         return rejectH0, res
 

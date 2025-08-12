@@ -13,6 +13,6 @@ Group0 = [45, 72, 85, 90, 93, 95, 95, 98, 99, 100]
 # Group that removed the hardware
 Group1 = [35, 63, 65, 70, 75, 78, 80, 90, 100]
 
-StatToolbox = MeansTester(Group0, Group1, two_tailed=True)
+StatToolbox = MeansTester(Group0, Group1, two_tailed=False, one_tailed_side="positive")
 
 StatToolbox.test_means()
