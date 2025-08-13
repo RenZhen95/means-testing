@@ -82,23 +82,19 @@ class MeansTester:
           sample
         * 'greater' : Mean of first sample is greater than mean of second
           sample
-
-    verbose : bool (default = False)
     '''
     def __init__(
             self, *_samples,
             sig_level_variance=0.05,
             sig_level_normality=0.05,
             sig_level_means=0.05,
-            alternative='two-sided',
-            verbose=False
+            alternative='two-sided'
     ):
         # Parameters
         self.sig_level_variance = sig_level_variance
         self.sig_level_normality = sig_level_normality
         self.sig_level_means = sig_level_means
         self.alternative = alternative
-        self.verbose = verbose
 
         # Attributes
         self.Samples = list(_samples)
@@ -396,7 +392,7 @@ class MeansTester:
 
         return rejectH0, res
 
-    def test_means(self):
+    def test_means(self, verbose=False):
         '''
         Test for statistical difference of means/centers.
         '''
@@ -415,7 +411,7 @@ class MeansTester:
             animation_thread.join()
 
         self.VarianceTest_H1_Stats = (is_unequal_variance, res_vartest)
-        if self.verbose:
+        if verbose:
             for k, v in res_vartest.items():
                 print(f" - {k:<10}: {v}")
         print(
@@ -452,7 +448,7 @@ class MeansTester:
             stop_event.set()
             animation_thread.join()
 
-        if self.verbose:
+        if verbose:
             for i, sample in enumerate(self.NormalityTest_H1_Stats):
                 print(
                     f"Samples #{i+1} are NOT drawn from a normal distribution: " +
@@ -481,7 +477,7 @@ class MeansTester:
             animation_thread.join()
 
         self.MeansTest_H1_Stats = (is_sig_different, res_meanstest)
-        if self.verbose:
+        if verbose:
             for k, v in res_meanstest.items():
                 print(f" - {k:<10}: {v}")
         print(

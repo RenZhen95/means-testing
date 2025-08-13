@@ -11,6 +11,7 @@ dependencies = [
     "numpy>=2.3.2",
     "pandas>=2.3.1",
     "scipy>=1.16.1",
+    "seaborn>=0.13.2",
 ]
 
 [project.scripts]
@@ -19,3 +20,11 @@ means-testing = "means_testing:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "means-testing",
+]
+
+[tool.uv.sources]
+means-testing = { workspace = true }
