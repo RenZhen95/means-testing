@@ -1,6 +1,6 @@
 [project]
 name = "means-testing"
-version = "0.0.4"
+version = "0.0.5"
 description = "A simple library to compare the means of two or more independent samples and check for statistical differences."
 readme = "README.md"
 authors = [
