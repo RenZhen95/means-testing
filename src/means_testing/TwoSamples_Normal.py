@@ -14,7 +14,7 @@ t2_exp1 = [
     0, 1, 8, 4, 7, 4, 7, 7, 6, 1, 0, 4, 4
 ]
 
-StatToolbox = MeansTester(t1_exp1, t2_exp1, two_tailed=True)
+StatToolbox = MeansTester(t1_exp1, t2_exp1, alternative='two-sided', verbose=False)
 
 StatToolbox.test_means()
 
@@ -32,6 +32,11 @@ t2_exp2 = [
     2, 6, 4, 12, 5, 8, 4, 0, 10, 0
 ]
 
-StatToolbox2 = MeansTester(t1_exp2, t2_exp2, two_tailed=True)
+StatToolbox2 = MeansTester(t1_exp2, t2_exp2, alternative='two-sided', verbose=False)
 
 StatToolbox2.test_means()
+
+if StatToolbox2.SignificantDifference:
+    print("Difference in means are significant!")
+else:
+    print("Difference in means are NOT significant!")

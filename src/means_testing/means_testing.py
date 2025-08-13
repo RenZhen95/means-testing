@@ -8,6 +8,8 @@ from scipy.stats import norm, chi2
 from scipy.stats import shapiro, f, levene
 from scipy.stats import ttest_ind, f_oneway
 
+MapFalseTrue_toNoYes = lambda x: 'No' if not x else 'Yes'
+
 def animate_loading(stop_event, msg):
     loading_chars = [
         f'{msg}    ',
@@ -56,57 +58,47 @@ class MeansTester:
        as the bigger variance over the smaller one. Hence, a one-tailed test
        is always assumed.
 
-    2. When carrying out a one-tailed test, note the following:
-    2.a) If a Mann-Whitney test is carried out, the order of samples passed
-         does NOT MATTER. This is due to the local implementation of the
-         Mann-Whitney test, where `n1` will always refer to the smaller
-         sample.
-    2.b) If a Student's t-test is carried out, the order of samples passed
-         MATTERS. Scipy's implementation is used here (scipy.stats.ttest_ind),
-         where the mean of the distribution underlying the first sample, is
-         compared with the mean of the distribution underlying the second
-         sample.
-
     Parameters
     ----------
     *_samples : np.array
-     - Samples to investigate
+        Samples to investigate
 
     sig_level_variance : float (default = 0.05)
-     - Significance level for testing for unequal variances between samples
+        Significance level for testing for unequal variances between samples.
 
     sig_level_normality : float (default = 0.05)
-     - Significance level for testing if samples are drawn from a normal
-       distribution
+        Significance level for testing if samples are drawn from a normal
+        distribution.
 
     sig_level_means : float (default = 0.05)
-     - Significance level for testing if means/medians of the samples are
-       statistically different
+        Significance level for testing if means/medians of the samples
+        are statistically different.
 
-    two_tailed : bool (default = True)
-     - Carry out two-tailed test if True
+    alternative : {'two-sided', 'less', 'greater'}
+        Defines the alternative hypothesis. Default is two-sided.
+    
+        * 'two-sided' : Samples have unequal means
+        * 'less' : Mean/Median of first sample is less than mean of second
+          sample
+        * 'greater' : Mean of first sample is greater than mean of second
+          sample
 
-    one_tailed_side : 'positive', 'negative', or None (default = None)
-     - If `two_tailed` is False, a one-tailed test will be carried out.
-
-       'positive' would test if the computed statistic is greater than the
-       critical value on the positive end, whereas 'negative' would test
-       if the computed statistic is lesser than the critical value on the
-       negative end.
+    verbose : bool (default = False)
     '''
     def __init__(
             self, *_samples,
             sig_level_variance=0.05,
             sig_level_normality=0.05,
             sig_level_means=0.05,
-            two_tailed=True, one_tailed_side=None
+            alternative='two-sided',
+            verbose=False
     ):
         # Parameters
         self.sig_level_variance = sig_level_variance
         self.sig_level_normality = sig_level_normality
         self.sig_level_means = sig_level_means
-        self.two_tailed = two_tailed
-        self.one_tailed_side = one_tailed_side
+        self.alternative = alternative
+        self.verbose = verbose
 
         # Attributes
         self.Samples = list(_samples)
@@ -124,6 +116,7 @@ class MeansTester:
 
         # - Means Test
         self.MeansTest_H1_Stats = None
+        self.SignificantDifference = None
 
     def test_equalvariances(self):
         '''
@@ -233,15 +226,8 @@ class MeansTester:
          - If True, the two samples have statistically different centers
            (medians)
         '''
-        if (
-                self.df_wRanks[self.df_wRanks["Group"]==0].shape[0] <
-                self.df_wRanks[self.df_wRanks["Group"]==1].shape[0]
-        ):
-            n1Group = self.df_wRanks[self.df_wRanks["Group"]==0]
-            n2Group = self.df_wRanks[self.df_wRanks["Group"]==1]
-        else:
-            n1Group = self.df_wRanks[self.df_wRanks["Group"]==1]
-            n2Group = self.df_wRanks[self.df_wRanks["Group"]==0]
+        n1Group = self.df_wRanks[self.df_wRanks["Group"]==0]
+        n2Group = self.df_wRanks[self.df_wRanks["Group"]==1]
 
         # 1. Get n1 and n2
         n1 = n1Group.shape[0]
@@ -261,7 +247,7 @@ class MeansTester:
 
         # 6. Get critical z and computed p value
         # - Two-tailed test
-        if self.two_tailed:
+        if self.alternative == 'two-sided':
             # The area (significant level) must be divided by half and split
             # on both ends. The normal distribution is symmetrical
             zcrit = norm.isf(self.sig_level_means/2, loc=0, scale=1)
@@ -273,13 +259,13 @@ class MeansTester:
 
             p = norm.sf(abs(z), loc=0, scale=1)*2
 
-        # - One-tailed test
+        # - One-tailed test, test first sample against second sample
         else:
             zcrit = norm.isf(self.sig_level_means, loc=0, scale=1)
 
             # Note: The direction does not affect the computed z-value
             # Positive end
-            if self.one_tailed_side == 'positive':
+            if self.alternative == 'greater':
                 if z >= zcrit:
                     rejectH0 = True
                 else:
@@ -289,7 +275,7 @@ class MeansTester:
 
             # Negative end
             # - The normal distribution is symmetrical
-            elif self.one_tailed_side == 'negative':
+            elif self.alternative == 'less':
                 if z <= -zcrit:
                     rejectH0 = True
                 else:
@@ -299,8 +285,8 @@ class MeansTester:
 
             else:
                 raise ValueError(
-                    "Parameter one_tailed_side must either be 'negative' " +
-                    "or 'positive'!"
+                    "Possible options for parameter alternative must either " +
+                    "be {'two-sided', 'greater', 'less'}."
                 )
 
         return z, p, rejectH0
@@ -382,19 +368,11 @@ class MeansTester:
         rejectH0 : bool
          - If true, samples have statistically different means
         '''
-        if self.two_tailed:
-            H1 = 'two-sided'
-        else:
-            if self.one_tailed_side == 'positive':
-                H1 = 'greater'
-            elif self.one_tailed_side == 'negative':
-                H1 = 'less'
-
         is_unequal_variance = self.VarianceTest_H1_Stats[0]
         if len(self.Samples) == 2:
             res_ttest = ttest_ind(
                 *self.Samples, equal_var=(not is_unequal_variance),
-                alternative=H1
+                alternative=self.alternative
             )
             res = {
                 'test_type': 't-test',
@@ -437,9 +415,13 @@ class MeansTester:
             animation_thread.join()
 
         self.VarianceTest_H1_Stats = (is_unequal_variance, res_vartest)
-        for k, v in res_vartest.items():
-            print(f" - {k:<10}: {v}")
-        print(f"Samples have unequal variances: {is_unequal_variance}\n")
+        if self.verbose:
+            for k, v in res_vartest.items():
+                print(f" - {k:<10}: {v}")
+        print(
+            "Samples have unequal variances: " +
+            f"{MapFalseTrue_toNoYes(is_unequal_variance)}\n"
+        )
 
         # === === === === === === === === === === === ===
         # 2. Check if samples have normal distribution
@@ -470,14 +452,15 @@ class MeansTester:
             stop_event.set()
             animation_thread.join()
 
-        for i, sample in enumerate(self.NormalityTest_H1_Stats):
-            print(
-                f"Samples #{i+1} are NOT drawn from a normal distribution: " +
-                f"{sample[0]}\n - {sample[1]}"
-            )
+        if self.verbose:
+            for i, sample in enumerate(self.NormalityTest_H1_Stats):
+                print(
+                    f"Samples #{i+1} are NOT drawn from a normal distribution: " +
+                    f"{sample[0]}\n - {sample[1]}"
+                )
         print(
             "At least one sample not drawn from a normal distribution: " +
-            f"{atleast_one_non_normal}\n"
+            f"{MapFalseTrue_toNoYes(atleast_one_non_normal)}\n"
         )
 
         # === === === === === === === === === === === ===
@@ -498,6 +481,12 @@ class MeansTester:
             animation_thread.join()
 
         self.MeansTest_H1_Stats = (is_sig_different, res_meanstest)
-        for k, v in res_meanstest.items():
-            print(f" - {k:<10}: {v}")
-        print(f"Samples are significantly different: {is_sig_different}\n")
+        if self.verbose:
+            for k, v in res_meanstest.items():
+                print(f" - {k:<10}: {v}")
+        print(
+            "Samples are significantly different: " +
+            f"{MapFalseTrue_toNoYes(is_sig_different)}\n"
+        )
+
+        self.SignificantDifference = is_sig_different
