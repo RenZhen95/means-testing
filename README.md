@@ -17,6 +17,13 @@ StatToolbox = MeansTester(*samples)
 StatToolbox.test_means()
 ```
 
+After carrying out the statistical test, one can determine if the samples passed are statistically different or not via the property `SignificantDifference` as shown below.
+```
+StatToolbox.SignificantDifference
+> True (if samples are statistically different) or
+> False (if samples are NOT statistically different)
+```
+
 For more examples check out the [examples](https://github.com/RenZhen95/means-testing/tree/master/examples).
 
 ## Citation
