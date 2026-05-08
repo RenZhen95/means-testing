@@ -1,6 +1,6 @@
 [project]
 name = "means-testing"
-version = "0.0.5"
+version = "0.0.6"
 description = "A simple library to compare the means of two or more independent samples and check for statistical differences."
 readme = "README.md"
 authors = [
@@ -13,6 +13,9 @@ dependencies = [
     "scipy>=1.16.1",
     "seaborn>=0.13.2",
 ]
+
+[project.urls]
+GitHub = "https://github.com/RenZhen95/means-testing/"
 
 [project.scripts]
 means-testing = "means_testing:main"
